@@ -1,0 +1,452 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Monotream</title>
+  <style>
+    :root{
+      --bg0:#070813;
+      --bg1:#0a0c1a;
+      --panel: rgba(255,255,255,.06);
+      --panel2: rgba(255,255,255,.10);
+      --border: rgba(255,255,255,.12);
+      --border2: rgba(255,255,255,.18);
+      --text: rgba(255,255,255,.92);
+      --muted: rgba(255,255,255,.70);
+      --muted2: rgba(255,255,255,.55);
+      --brand: #6b5cff;
+      --brand2: #55c4ff;
+      --danger: #ff4d4d;
+      --radius: 18px;
+      --shadow: 0 22px 60px rgba(0,0,0,.35);
+      --sans: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial;
+      --mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+    }
+    *{box-sizing:border-box}
+    html,body{ height:100%; }
+    body{
+      margin:0;
+      font-family: var(--sans);
+      color: var(--text);
+      background:
+        radial-gradient(900px 520px at 10% 18%, rgba(107,92,255,.35), transparent 60%),
+        radial-gradient(780px 520px at 88% 76%, rgba(85,196,255,.28), transparent 60%),
+        radial-gradient(620px 420px at 72% 22%, rgba(167,80,255,.18), transparent 55%),
+        linear-gradient(180deg, var(--bg0), var(--bg1));
+      overflow-x:hidden;
+    }
+    a{ color:inherit; text-decoration:none; }
+
+    .wrap{
+      max-width: 1180px;
+      margin: 0 auto;
+      padding: 18px 18px 56px;
+    }
+
+    .shell{
+      border-radius: 26px;
+      padding: 18px 18px 22px;
+      background: rgba(0,0,0,.24);
+      border: 1px solid rgba(255,255,255,.08);
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+    }
+
+    /* Top bar */
+    .topbar{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:16px;
+      padding: 10px 4px 14px;
+    }
+    .brand{
+      display:flex;
+      align-items:center;
+      gap:12px;
+      min-width: 0;
+    }
+    .mark{
+      width:42px;height:42px;
+      border-radius: 14px;
+      background: linear-gradient(135deg, rgba(107,92,255,.20), rgba(85,196,255,.18));
+      border: 1px solid rgba(255,255,255,.14);
+      display:grid;
+      place-items:center;
+      box-shadow: 0 10px 24px rgba(0,0,0,.25);
+      flex:0 0 auto;
+    }
+    .nameBlock{ display:flex; flex-direction:column; gap:4px; min-width:0; }
+    .name{
+      font-size:18px;
+      font-weight: 950;
+      letter-spacing: -0.2px;
+      line-height: 1.05;
+      white-space:nowrap;
+      overflow:hidden;
+      text-overflow:ellipsis;
+    }
+    .tagline{
+      margin:0;
+      font-family: var(--mono);
+      font-size: 12px;
+      color: var(--muted2);
+      white-space:nowrap;
+      overflow:hidden;
+      text-overflow:ellipsis;
+      max-width: 52ch;
+    }
+
+    /* Hero */
+    .hero{
+      display:grid;
+      grid-template-columns: 1.05fr .95fr;
+      gap: 18px;
+      align-items:stretch;
+      padding: 18px 4px 2px;
+    }
+    .heroLeft{
+      padding: 40px 18px 24px 10px;
+    }
+    .headline{
+      margin:0;
+      font-size: 62px;
+      font-weight: 980;
+      letter-spacing: -1.6px;
+      line-height: 0.98;
+    }
+    .headline .dot{ color: rgba(255,255,255,.88); }
+    .subhead{
+      margin: 18px 0 0 0;
+      color: var(--muted);
+      font-size: 16px;
+      line-height: 1.55;
+      max-width: 62ch;
+    }
+
+    .ctaRow{
+      margin-top: 22px;
+      display:flex;
+      flex-wrap:wrap;
+      gap: 14px;
+      align-items:center;
+    }
+    .btn{
+      appearance:none;
+      border: 1px solid transparent;
+      border-radius: 14px;
+      padding: 14px 18px;
+      font-weight: 950;
+      font-size: 15px;
+      cursor:pointer;
+      display:inline-flex;
+      align-items:center;
+      gap: 10px;
+      transition: transform .08s ease, filter .14s ease, background .14s ease, border-color .14s ease;
+      user-select:none;
+    }
+    .btn:active{ transform: translateY(1px); }
+    .btn.primary{
+      color: rgba(255,255,255,.95);
+      background: linear-gradient(135deg, var(--brand), var(--brand2));
+      box-shadow: 0 16px 36px rgba(107,92,255,.22);
+    }
+    .btn.primary:hover{ filter: brightness(1.02); }
+    .btn.secondary{
+      color: rgba(255,255,255,.92);
+      background: rgba(255,255,255,.06);
+      border-color: rgba(255,255,255,.16);
+    }
+    .btn.secondary:hover{
+      background: rgba(255,255,255,.09);
+      border-color: rgba(255,255,255,.20);
+    }
+    .btn.ghost{
+      color: rgba(255,255,255,.84);
+      background: transparent;
+      border-color: rgba(255,255,255,.14);
+    }
+    .btn.ghost:hover{
+      background: rgba(255,255,255,.06);
+      border-color: rgba(255,255,255,.20);
+    }
+
+    /* Visual card */
+    .heroRight{
+      position:relative;
+      border-radius: 22px;
+      border: 1px solid rgba(255,255,255,.12);
+      background: rgba(255,255,255,.04);
+      overflow:hidden;
+      box-shadow: 0 16px 48px rgba(0,0,0,.26);
+      min-height: 420px;
+    }
+    .img{
+      position:absolute;
+      inset:0;
+      width:100%;
+      height:100%;
+      object-fit: cover;
+      filter: saturate(1.05) contrast(1.05);
+      transform: scale(1.02);
+    }
+    .imgOverlay{
+      position:absolute;
+      inset:0;
+      background:
+        radial-gradient(700px 420px at 22% 22%, rgba(107,92,255,.35), transparent 58%),
+        radial-gradient(700px 420px at 80% 76%, rgba(85,196,255,.26), transparent 60%),
+        linear-gradient(180deg, rgba(0,0,0,.45), rgba(0,0,0,.40));
+      pointer-events:none;
+    }
+    .glass{
+      position:absolute;
+      left: 16px;
+      right: 16px;
+      bottom: 16px;
+      border-radius: 18px;
+      padding: 14px 14px;
+      border: 1px solid rgba(255,255,255,.14);
+      background: rgba(0,0,0,.32);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      display:flex;
+      align-items:flex-start;
+      justify-content:space-between;
+      gap: 12px;
+    }
+    .glass .t{
+      font-weight: 950;
+      letter-spacing: -0.2px;
+      line-height: 1.1;
+    }
+    .glass .m{
+      margin-top: 4px;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.35;
+    }
+    .chip{ display:none; }
+
+    /* Admin modal */
+    .overlay{
+      position:fixed;
+      inset:0;
+      background: rgba(0,0,0,.62);
+      display:none;
+      align-items:center;
+      justify-content:center;
+      padding: 18px;
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+    }
+    .overlay.on{ display:flex; }
+    .modal{
+      width: min(520px, 100%);
+      border-radius: 18px;
+      border: 1px solid rgba(255,255,255,.14);
+      background: rgba(10,12,26,.92);
+      box-shadow: 0 24px 60px rgba(0,0,0,.45);
+      overflow:hidden;
+    }
+    .modal .hd{
+      padding: 14px 16px;
+      border-bottom: 1px solid rgba(255,255,255,.10);
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:10px;
+    }
+    .modal .hd .t{
+      font-size:12px;
+      font-weight:950;
+      letter-spacing:.08em;
+      text-transform:uppercase;
+      color: var(--muted2);
+      font-family: var(--mono);
+    }
+    .iconBtn{
+      appearance:none;
+      border:1px solid rgba(255,255,255,.14);
+      background: rgba(255,255,255,.06);
+      border-radius: 12px;
+      padding: 8px 10px;
+      font-weight:950;
+      cursor:pointer;
+      color: var(--muted);
+    }
+    .iconBtn:hover{
+      background: rgba(255,255,255,.09);
+      border-color: rgba(255,255,255,.20);
+      color: var(--text);
+    }
+    .modal .bd{ padding: 16px; }
+    .label{
+      display:block;
+      font-size:12px;
+      font-weight:950;
+      color: var(--muted2);
+      letter-spacing:.08em;
+      text-transform:uppercase;
+      font-family: var(--mono);
+      margin-bottom: 8px;
+    }
+    .input{
+      width:100%;
+      border:1px solid rgba(255,255,255,.14);
+      border-radius: 14px;
+      padding: 12px 12px;
+      font-size: 14px;
+      font-weight: 850;
+      outline: none;
+      background: rgba(255,255,255,.06);
+      color: var(--text);
+    }
+    .input::placeholder{ color: rgba(255,255,255,.42); }
+    .input:focus{
+      border-color: rgba(85,196,255,.55);
+      box-shadow: 0 0 0 4px rgba(85,196,255,.12);
+    }
+    .modal .row{
+      display:flex;
+      gap:10px;
+      align-items:center;
+      justify-content:flex-end;
+      margin-top: 12px;
+      flex-wrap:wrap;
+    }
+    .msg{
+      margin-top: 10px;
+      color: rgba(255,120,120,.95);
+      font-size: 13px;
+      display:none;
+    }
+    .msg.on{ display:block; }
+
+    @media (max-width: 980px){
+      .hero{ grid-template-columns: 1fr; }
+      .heroLeft{ padding: 24px 10px 8px; }
+      .headline{ font-size: 46px; letter-spacing: -1.2px; }
+      .heroRight{ min-height: 340px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="shell">
+      <div class="topbar">
+        <div class="brand">
+          <div class="mark" aria-hidden="true" title="platypus">
+            <svg width="28" height="28" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+              <path d="M18 30c0-8 7-14 16-14s16 6 16 14-7 16-16 16-16-8-16-16Z" fill="rgba(255,255,255,.08)" stroke="rgba(255,255,255,.22)" stroke-width="2"/>
+              <path d="M10 36c2-6 10-10 18-10h8c8 0 16 4 18 10-3 5-10 8-18 8h-8c-8 0-15-3-18-8Z" fill="rgba(85,196,255,.16)" stroke="rgba(85,196,255,.70)" stroke-width="2" stroke-linejoin="round"/>
+              <circle cx="26" cy="28" r="2.2" fill="rgba(255,255,255,.62)"/>
+              <circle cx="38" cy="28" r="2.2" fill="rgba(255,255,255,.62)"/>
+            </svg>
+          </div>
+          <div class="nameBlock">
+            <div class="name">Monotream</div>
+            <p class="tagline">Personal heat monitor</p>
+          </div>
+        </div>
+      </div>
+
+      <main class="hero">
+        <section class="heroLeft">
+          <h1 class="headline">Walk smarter<span class="dot">.</span></h1>
+          <p class="subhead">
+            Monotream helps you quickly find cooler paths and avoid hot spots around campus—so you can get where you’re going comfortably.
+          </p>
+
+          <div class="ctaRow" role="navigation" aria-label="Primary">
+            <a class="btn primary" href="/dashboard">Go to Dashboard</a>
+            <a class="btn secondary" href="/about">About <span aria-hidden="true">→</span></a>
+            <button class="btn ghost" type="button" id="adminBtn">Admin</button>
+          </div>
+        </section>
+
+        <aside class="heroRight" aria-label="MIT campus photo">
+          <img class="img" src="/assets/MITFALL.jpg" alt="MIT campus by the river in fall" />
+          <div class="imgOverlay" aria-hidden="true"></div>
+          <div class="glass">
+            <div>
+              <div class="t">MIT • Fall snapshot</div>
+              <div class="m">A simple, inviting landing to start your demo.</div>
+            </div>
+            <div class="chip"></div>
+          </div>
+        </aside>
+      </main>
+    </div>
+  </div>
+
+  <div class="overlay" id="adminOverlay" aria-hidden="true">
+    <div class="modal" role="dialog" aria-modal="true" aria-label="Admin login">
+      <div class="hd">
+        <div class="t">Admin login</div>
+        <button class="iconBtn" type="button" id="closeAdminBtn">Close</button>
+      </div>
+      <div class="bd">
+        <form id="adminForm">
+          <label class="label" for="adminPassword">Password</label>
+          <input class="input" id="adminPassword" name="password" type="password" autocomplete="current-password" required />
+          <div class="row">
+            <button class="btn" type="button" id="cancelAdminBtn">Cancel</button>
+            <button class="btn primary" type="submit" id="loginAdminBtn">Continue</button>
+          </div>
+          <div class="msg" id="adminMsg">Invalid password.</div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const overlay = document.getElementById("adminOverlay");
+    const adminBtn = document.getElementById("adminBtn");
+    const closeBtn = document.getElementById("closeAdminBtn");
+    const cancelBtn = document.getElementById("cancelAdminBtn");
+    const form = document.getElementById("adminForm");
+    const pw = document.getElementById("adminPassword");
+    const msg = document.getElementById("adminMsg");
+
+    function openAdmin(){
+      msg.classList.remove("on");
+      overlay.classList.add("on");
+      overlay.setAttribute("aria-hidden", "false");
+      setTimeout(() => pw.focus(), 0);
+    }
+    function closeAdmin(){
+      overlay.classList.remove("on");
+      overlay.setAttribute("aria-hidden", "true");
+      pw.value = "";
+    }
+
+    adminBtn.addEventListener("click", openAdmin);
+    closeBtn.addEventListener("click", closeAdmin);
+    cancelBtn.addEventListener("click", closeAdmin);
+    overlay.addEventListener("click", (e) => { if(e.target === overlay) closeAdmin(); });
+    window.addEventListener("keydown", (e) => { if(e.key === "Escape" && overlay.classList.contains("on")) closeAdmin(); });
+
+    form.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      msg.classList.remove("on");
+      const password = pw.value;
+      const res = await fetch("/admin/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ password })
+      });
+      if(res.ok){
+        window.location.href = "/admin";
+        return;
+      }
+      msg.classList.add("on");
+      pw.focus();
+      pw.select();
+    });
+  </script>
+</body>
+</html>
+

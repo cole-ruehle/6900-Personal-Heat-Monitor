@@ -1,0 +1,665 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Campus Temperature Dashboard</title>
+  <style>
+    :root{
+      --bg:#ffffff;
+      --text:#0b0f17;
+      --muted:#667085;
+      --border:#e5e7eb;
+      --panel:#ffffff;
+      --soft:#f8fafc;
+
+      /* MIT red accent (used sparingly) */
+      --accent:#a31f34;
+
+      --hot:#d92d20;      /* red */
+      --neutral:#98a2b3;  /* gray */
+      --cool:#12b76a;     /* green */
+
+      --radius:6px;       /* sharp-ish */
+      --shadow: 0 6px 18px rgba(16,24,40,.08); /* subtle */
+      --mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+      --sans: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial;
+    }
+
+    *{box-sizing:border-box}
+    body{
+      margin:0;
+      font-family:var(--sans);
+      color:var(--text);
+      background:var(--bg);
+    }
+
+    .wrap{
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 20px 16px 32px;
+    }
+
+    /* Top bar */
+    .topbar{
+      display:flex;
+      align-items:flex-end;
+      justify-content:space-between;
+      gap:16px;
+      padding: 10px 0 16px;
+      border-bottom: 2px solid var(--border);
+    }
+    .title{
+      display:flex;
+      flex-direction:column;
+      gap:6px;
+    }
+    h1{
+      margin:0;
+      font-size:22px;
+      font-weight:800;
+      letter-spacing:-.2px;
+    }
+    .subtitle{
+      margin:0;
+      color:var(--muted);
+      font-size:13px;
+      line-height:1.35;
+      max-width: 760px;
+    }
+    .status{
+      color:var(--muted);
+      font-size:12px;
+      font-family:var(--mono);
+      white-space:nowrap;
+      display:flex;
+      align-items:center;
+      justify-content:flex-end;
+      gap:10px;
+    }
+    .status .live{
+      display:inline-flex;
+      align-items:center;
+      gap:8px;
+    }
+    .status .dot{
+      width:8px;height:8px;border-radius:50%;
+      background: var(--accent);
+    }
+    .navLink{
+      display:inline-flex;
+      align-items:center;
+      padding: 6px 10px;
+      border-radius: 999px;
+      border:1px solid var(--border);
+      background:#fff;
+      color: var(--muted);
+      font-weight:900;
+      text-decoration:none;
+    }
+    .navLink:hover{
+      background: var(--soft);
+      border-color:#d0d5dd;
+      color: var(--text);
+    }
+
+    /* Layout */
+    .grid{
+      display:grid;
+      grid-template-columns: 360px 1fr;
+      gap: 16px;
+      margin-top: 16px;
+      align-items:start;
+    }
+
+    .card{
+      background:var(--panel);
+      border:1px solid var(--border);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      overflow:hidden;
+    }
+    .card .hd{
+      padding: 12px 14px;
+      border-bottom:1px solid var(--border);
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:10px;
+      background: #fff;
+    }
+    .card .hd h2{
+      margin:0;
+      font-size:12px;
+      letter-spacing:.08em;
+      text-transform:uppercase;
+      color: var(--muted);
+      font-weight:800;
+    }
+    .card .bd{ padding: 14px; }
+
+    /* KPI row */
+    .kpiRow{
+      display:flex;
+      align-items:flex-start;
+      justify-content:space-between;
+      gap:14px;
+      padding: 14px;
+      border:1px solid var(--border);
+      border-radius: var(--radius);
+      background: var(--soft);
+    }
+    .kpiMain{
+      display:flex;
+      flex-direction:column;
+      gap:6px;
+    }
+    .bigTemp{
+      font-size:44px;
+      font-weight:900;
+      letter-spacing:-.6px;
+      line-height:1;
+    }
+    .delta{
+      font-size:13px;
+      font-weight:800;
+      color: var(--hot);
+    }
+    .smallMeta{
+      font-size:12px;
+      color: var(--muted);
+      font-family: var(--mono);
+    }
+
+    .btn{
+      appearance:none;
+      border:1px solid var(--border);
+      background:#fff;
+      color: var(--text);
+      padding: 10px 12px;
+      border-radius: 6px;
+      font-weight:800;
+      font-size:12px;
+      cursor:pointer;
+      transition: background .12s ease, border-color .12s ease, transform .06s ease;
+      white-space:nowrap;
+    }
+    .btn:hover{ background: var(--soft); border-color:#d0d5dd; }
+    .btn:active{ transform: translateY(1px); }
+
+    .btn.accent{
+      border-color: rgba(163,31,52,.35);
+      background: rgba(163,31,52,.06);
+      color: var(--accent);
+    }
+
+    /* Legend */
+    .legend{
+      display:grid;
+      gap:10px;
+      margin-top: 14px;
+    }
+    .legItem{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:10px;
+      padding: 10px 12px;
+      border:1px solid var(--border);
+      border-radius: var(--radius);
+      background:#fff;
+    }
+    .legLeft{ display:flex; align-items:center; gap:10px; }
+    .swatch{
+      width:10px;height:10px;border-radius:2px;
+      flex:0 0 auto;
+    }
+    .legText{
+      display:flex;
+      flex-direction:column;
+      gap:2px;
+    }
+    .legName{ font-size:13px; font-weight:800; }
+    .legHint{ font-size:12px; color:var(--muted); font-family:var(--mono); }
+
+    .tag{
+      font-size:11px;
+      font-weight:900;
+      letter-spacing:.06em;
+      text-transform:uppercase;
+      padding: 6px 8px;
+      border-radius: 999px;
+      border:1px solid var(--border);
+      color: var(--muted);
+      background: #fff;
+      white-space:nowrap;
+    }
+    .tag.go{ border-color: rgba(18,183,106,.35); color: var(--cool); background: rgba(18,183,106,.06); }
+    .tag.avoid{ border-color: rgba(217,45,32,.35); color: var(--hot); background: rgba(217,45,32,.06); }
+
+    /* Lists */
+    .list{
+      margin-top: 14px;
+      border:1px solid var(--border);
+      border-radius: var(--radius);
+      overflow:hidden;
+      background:#fff;
+    }
+    .list .lh{
+      padding: 10px 12px;
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      border-bottom:1px solid var(--border);
+      background: #fff;
+    }
+    .list .lh .name{
+      font-size:12px;
+      font-weight:900;
+      letter-spacing:.08em;
+      text-transform:uppercase;
+      color: var(--muted);
+    }
+    .rows{
+      padding: 8px 10px;
+      display:flex;
+      flex-direction:column;
+      gap:8px;
+    }
+    .row{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:12px;
+      padding: 10px;
+      border:1px solid var(--border);
+      border-radius: 6px;
+      background: #fff;
+    }
+    .row .left{
+      display:flex;
+      flex-direction:column;
+      gap:2px;
+      min-width: 0;
+    }
+    .row .title{
+      font-size:13px;
+      font-weight:900;
+      white-space:nowrap;
+      overflow:hidden;
+      text-overflow:ellipsis;
+    }
+    .row .meta{
+      font-size:12px;
+      color: var(--muted);
+      font-family: var(--mono);
+    }
+    .badge{
+      font-family: var(--mono);
+      font-size:12px;
+      font-weight:900;
+      padding: 6px 8px;
+      border-radius: 6px;
+      border:1px solid var(--border);
+      background: var(--soft);
+      white-space:nowrap;
+    }
+    .badge.hot{ border-color: rgba(217,45,32,.35); color: var(--hot); background: rgba(217,45,32,.06); }
+    .badge.cool{ border-color: rgba(18,183,106,.35); color: var(--cool); background: rgba(18,183,106,.06); }
+
+    /* Map */
+    .mapShell{ padding:0; }
+    .mapTop{
+      padding: 12px 14px;
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap: 12px;
+      border-bottom:1px solid var(--border);
+      background:#fff;
+    }
+    .mapTop .left{
+      display:flex;
+      flex-direction:column;
+      gap:4px;
+    }
+    .mapTop .left .t{
+      font-size:12px;
+      font-weight:900;
+      letter-spacing:.08em;
+      text-transform:uppercase;
+      color: var(--muted);
+    }
+    .mapTop .left .s{
+      font-size:13px;
+      color: var(--muted);
+    }
+
+    .map{
+      position:relative;
+      height: 640px;
+      background: #fff;
+    }
+
+    /* minimal “campus map” look: light grid + a few block outlines */
+    .map::before{
+      content:"";
+      position:absolute; inset:0;
+      background-image:
+        linear-gradient(to right, rgba(16,24,40,.06) 1px, transparent 1px),
+        linear-gradient(to bottom, rgba(16,24,40,.06) 1px, transparent 1px);
+      background-size: 56px 56px;
+      opacity:.35;
+      pointer-events:none;
+    }
+    .outline{
+      position:absolute;
+      border:1px solid rgba(16,24,40,.18);
+      border-radius: 4px;
+      background: rgba(16,24,40,.02);
+    }
+
+    .zone{
+      position:absolute;
+      border-radius: 6px;
+      border: 2px solid rgba(16,24,40,.12);
+      overflow:hidden;
+    }
+    .zone.hot{ background: rgba(217,45,32,.12); border-color: rgba(217,45,32,.28); }
+    .zone.cool{ background: rgba(18,183,106,.12); border-color: rgba(18,183,106,.28); }
+    .zone.neutral{ background: rgba(152,162,179,.10); border-color: rgba(152,162,179,.22); }
+
+    .zoneLabel{
+      position:absolute;
+      left:10px; top:10px;
+      font-size:13px;
+      font-weight:900;
+    }
+    .zoneMeta{
+      position:absolute;
+      left:10px; bottom:10px;
+      display:flex; gap:8px; flex-wrap:wrap;
+      font-family: var(--mono);
+      font-size:12px;
+      color: rgba(16,24,40,.72);
+    }
+    .chip{
+      padding: 6px 8px;
+      border-radius: 999px;
+      border:1px solid rgba(16,24,40,.12);
+      background: #fff;
+    }
+
+    /* Routes overlay */
+    .routes{ position:absolute; inset:0; pointer-events:none; display:none; }
+    .routes.on{ display:block; }
+    .route{
+      position:absolute;
+      height:4px;
+      border-radius: 2px;
+      background: rgba(163,31,52,.55); /* MIT red route */
+    }
+    .route.faint{ background: rgba(16,24,40,.22); }
+
+    .note{
+      position:absolute;
+      right:14px; bottom:14px;
+      width: 360px;
+      border:1px solid var(--border);
+      border-left: 4px solid var(--accent);
+      border-radius: 6px;
+      padding: 12px 12px 12px 12px;
+      background:#fff;
+      box-shadow: var(--shadow);
+    }
+    .note .nt{
+      font-size:12px;
+      font-weight:900;
+      letter-spacing:.08em;
+      text-transform:uppercase;
+      color: var(--muted);
+      margin-bottom:6px;
+    }
+    .note .nb{
+      font-size:13px;
+      color: var(--muted);
+      line-height:1.35;
+    }
+    .note b{ color: var(--text); }
+
+    @media (max-width: 980px){
+      .grid{ grid-template-columns: 1fr; }
+      .map{ height: 520px; }
+      .note{ width: calc(100% - 28px); left:14px; right:14px; }
+    }
+  </style>
+</head>
+
+<body>
+  <div class="wrap">
+    <div class="topbar">
+      <div class="title">
+        <h1>Campus Temperature Dashboard</h1>
+        <p class="subtitle">
+          Goal: help students decide <b>where to avoid</b> (hot spots) and <b>where to go</b> (cool spots) while walking around campus.
+        </p>
+      </div>
+      <div class="status">
+        <a class="navLink" href="/">Home</a>
+        <a class="navLink" href="/about">About</a>
+        <span class="live"><span class="dot"></span><span id="updatedText">Updated 4:51 PM • Live</span></span>
+      </div>
+    </div>
+
+    <div class="grid">
+      <!-- LEFT -->
+      <div class="card">
+        <div class="hd">
+          <h2>Overview</h2>
+          <button class="btn accent" id="toggleBtn">Toggle Routes</button>
+        </div>
+        <div class="bd">
+          <div class="kpiRow">
+            <div class="kpiMain">
+              <div class="bigTemp" id="tempValue">42°F</div>
+              <div class="delta" id="deltaValue">+6°F above average</div>
+              <div class="smallMeta">baseline: 36°F • mode: anomaly</div>
+            </div>
+          </div>
+
+          <div class="legend">
+            <div class="legItem">
+              <div class="legLeft">
+                <div class="swatch" style="background:var(--hot)"></div>
+                <div class="legText">
+                  <div class="legName">Hotter than normal</div>
+                  <div class="legHint">Δ +4°F and up</div>
+                </div>
+              </div>
+              <span class="tag avoid">avoid</span>
+            </div>
+
+            <div class="legItem">
+              <div class="legLeft">
+                <div class="swatch" style="background:var(--neutral)"></div>
+                <div class="legText">
+                  <div class="legName">Normal</div>
+                  <div class="legHint">Δ within ±3°F</div>
+                </div>
+              </div>
+              <span class="tag">ok</span>
+            </div>
+
+            <div class="legItem">
+              <div class="legLeft">
+                <div class="swatch" style="background:var(--cool)"></div>
+                <div class="legText">
+                  <div class="legName">Cooler than normal</div>
+                  <div class="legHint">Δ -4°F and down</div>
+                </div>
+              </div>
+              <span class="tag go">go</span>
+            </div>
+          </div>
+
+          <div class="list">
+            <div class="lh">
+              <div class="name">Top Hot Spots</div>
+              <span class="tag avoid">avoid</span>
+            </div>
+            <div class="rows" id="hotList"></div>
+          </div>
+
+          <div class="list">
+            <div class="lh">
+              <div class="name">Top Cool Spots</div>
+              <span class="tag go">go</span>
+            </div>
+            <div class="rows" id="coolList"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- RIGHT -->
+      <div class="card mapShell">
+        <div class="mapTop">
+          <div class="left">
+            <div class="t">Campus Map</div>
+            <div class="s">Zones are labeled so this mockup works as a decision tool.</div>
+          </div>
+          <button class="btn" id="toggleBtn2">Toggle Routes</button>
+        </div>
+
+        <div class="map" id="map">
+          <!-- simple “building outlines” -->
+          <div class="outline" style="left:6%; top:10%; width:22%; height:14%;"></div>
+          <div class="outline" style="left:31%; top:12%; width:18%; height:10%;"></div>
+          <div class="outline" style="left:54%; top:10%; width:16%; height:14%;"></div>
+          <div class="outline" style="left:73%; top:14%; width:18%; height:10%;"></div>
+
+          <div class="outline" style="left:10%; top:34%; width:26%; height:18%;"></div>
+          <div class="outline" style="left:42%; top:32%; width:18%; height:16%;"></div>
+          <div class="outline" style="left:66%; top:34%; width:24%; height:18%;"></div>
+
+          <div class="outline" style="left:8%; top:62%; width:18%; height:16%;"></div>
+          <div class="outline" style="left:30%; top:60%; width:22%; height:18%;"></div>
+          <div class="outline" style="left:56%; top:60%; width:36%; height:18%;"></div>
+
+          <!-- zones -->
+          <div class="zone hot" style="left:8%; top:22%; width:34%; height:20%;">
+            <div class="zoneLabel">Mass Ave Corridor</div>
+            <div class="zoneMeta">
+              <span class="chip">Δ +7°F</span>
+              <span class="chip">crowded</span>
+            </div>
+          </div>
+
+          <div class="zone hot" style="left:56%; top:22%; width:34%; height:18%;">
+            <div class="zoneLabel">Student Center Plaza</div>
+            <div class="zoneMeta">
+              <span class="chip">Δ +5°F</span>
+              <span class="chip">sun-exposed</span>
+            </div>
+          </div>
+
+          <div class="zone cool" style="left:14%; top:54%; width:30%; height:24%;">
+            <div class="zoneLabel">Shaded Courtyard</div>
+            <div class="zoneMeta">
+              <span class="chip">Δ -6°F</span>
+              <span class="chip">tree cover</span>
+            </div>
+          </div>
+
+          <div class="zone neutral" style="left:52%; top:52%; width:38%; height:26%;">
+            <div class="zoneLabel">Library Area</div>
+            <div class="zoneMeta">
+              <span class="chip">Δ -1°F</span>
+              <span class="chip">stable</span>
+            </div>
+          </div>
+
+          <!-- routes overlay -->
+          <div class="routes" id="routes">
+            <div class="route" style="left:6%; top:44%; width:88%; transform: rotate(-2deg);"></div>
+            <div class="route faint" style="left:20%; top:70%; width:64%; transform: rotate(6deg);"></div>
+            <div class="route faint" style="left:40%; top:28%; width:44%; transform: rotate(18deg);"></div>
+          </div>
+
+          <div class="note">
+            <div class="nt">Decision Summary</div>
+            <div class="nb">
+              <b>Avoid:</b> Mass Ave Corridor, Student Center Plaza (higher anomaly).<br/>
+              <b>Go:</b> Shaded Courtyard (lower anomaly). Toggle routes to plan a cooler path.
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <script>
+    // No external deps. Safari-friendly.
+    const hotspots = [
+      { name: "Mass Ave Corridor", delta: +7, reason: "sun + foot traffic" },
+      { name: "Student Center Plaza", delta: +5, reason: "open concrete" },
+      { name: "Kresge Steps", delta: +4, reason: "wind shielded" }
+    ];
+
+    const coolspots = [
+      { name: "Shaded Courtyard", delta: -6, reason: "tree cover" },
+      { name: "North Arcade", delta: -5, reason: "shade corridor" },
+      { name: "Basement Connector", delta: -4, reason: "indoor route" }
+    ];
+
+    function renderList(el, items, kind){
+      el.innerHTML = "";
+      items.forEach(x => {
+        const row = document.createElement("div");
+        row.className = "row";
+
+        const left = document.createElement("div");
+        left.className = "left";
+        left.innerHTML = `
+          <div class="title">${x.name}</div>
+          <div class="meta">${x.reason}</div>
+        `;
+
+        const badge = document.createElement("div");
+        const sign = x.delta > 0 ? "+" : "";
+        badge.className = "badge " + (kind === "hot" ? "hot" : "cool");
+        badge.textContent = `Δ ${sign}${x.delta}°F`;
+
+        row.appendChild(left);
+        row.appendChild(badge);
+        el.appendChild(row);
+      });
+    }
+
+    renderList(document.getElementById("hotList"), hotspots, "hot");
+    renderList(document.getElementById("coolList"), coolspots, "cool");
+
+    // routes toggle
+    const routes = document.getElementById("routes");
+    const btn1 = document.getElementById("toggleBtn");
+    const btn2 = document.getElementById("toggleBtn2");
+    let on = false;
+    function toggleRoutes(){
+      on = !on;
+      routes.classList.toggle("on", on);
+    }
+    btn1.addEventListener("click", toggleRoutes);
+    btn2.addEventListener("click", toggleRoutes);
+
+    // Update label at open (no API)
+    (function(){
+      const d = new Date();
+      const hrs = d.getHours();
+      const mins = String(d.getMinutes()).padStart(2,"0");
+      const ampm = hrs >= 12 ? "PM" : "AM";
+      const hr12 = ((hrs + 11) % 12 + 1);
+      document.getElementById("updatedText").textContent = `Updated ${hr12}:${mins} ${ampm} • Live`;
+    })();
+  </script>
+</body>
+</html>

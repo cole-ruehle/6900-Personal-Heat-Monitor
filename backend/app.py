@@ -1,4 +1,9 @@
-from fastapi import FastAPI, Form
+from fastapi import Body, FastAPI, Form, HTTPException, Request
+from fastapi.responses import FileResponse, JSONResponse, RedirectResponse
+from fastapi.staticfiles import StaticFiles
+from pathlib import Path
+import os
+import secrets
 import sqlite3
 from datetime import datetime
 import time
@@ -8,10 +13,82 @@ app = FastAPI(
     docs_url=f"/docs",
     redoc_url=f"/redoc",
 )
+
+REPO_ROOT = Path(__file__).resolve().parents[1]
+ASSETS_DIR = REPO_ROOT / "frontend" / "assets"
+app.mount("/assets", StaticFiles(directory=str(ASSETS_DIR)), name="assets")
+
+ADMIN_PASSWORD = os.getenv("ADMIN_PASSWORD", "monotream")
+_admin_sessions: set[str] = set()
+
+
+def _is_admin(request: Request) -> bool:
+    token = request.cookies.get("admin_session")
+    return bool(token) and token in _admin_sessions
 	 
 @app.get("/")
 async def root():
-    return "hey there"
+    landing_path = REPO_ROOT / "frontend" / "landing.html"
+    if not landing_path.exists():
+        raise HTTPException(status_code=404, detail="landing.html not found")
+    return FileResponse(landing_path, media_type="text/html")
+
+
+@app.get("/dashboard")
+async def dashboard():
+    mockup_path = REPO_ROOT / "frontend" / "mockup.html"
+    if not mockup_path.exists():
+        raise HTTPException(status_code=404, detail="mockup.html not found")
+    return FileResponse(mockup_path, media_type="text/html")
+
+
+@app.get("/about")
+async def about():
+    about_path = REPO_ROOT / "frontend" / "about.html"
+    if not about_path.exists():
+        raise HTTPException(status_code=404, detail="about.html not found")
+    return FileResponse(about_path, media_type="text/html")
+
+
+@app.post("/admin/login")
+async def admin_login(payload: dict = Body(...)):
+    password = str(payload.get("password", ""))
+    if password != ADMIN_PASSWORD:
+        raise HTTPException(status_code=401, detail="Invalid admin password")
+
+    token = secrets.token_urlsafe(32)
+    _admin_sessions.add(token)
+
+    resp = JSONResponse({"ok": True})
+    resp.set_cookie(
+        "admin_session",
+        token,
+        httponly=True,
+        samesite="lax",
+        max_age=60 * 60 * 8,
+    )
+    return resp
+
+
+@app.post("/admin/logout")
+async def admin_logout(request: Request):
+    token = request.cookies.get("admin_session")
+    if token:
+        _admin_sessions.discard(token)
+    resp = JSONResponse({"ok": True})
+    resp.delete_cookie("admin_session")
+    return resp
+
+
+@app.get("/admin")
+async def admin(request: Request):
+    if not _is_admin(request):
+        return RedirectResponse(url="/", status_code=303)
+
+    admin_path = REPO_ROOT / "frontend" / "admin.html"
+    if not admin_path.exists():
+        raise HTTPException(status_code=404, detail="admin.html not found")
+    return FileResponse(admin_path, media_type="text/html")
 
 @app.get("/health")
 async def health():

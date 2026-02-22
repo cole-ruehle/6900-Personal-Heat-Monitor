@@ -1,0 +1,268 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Admin • Monotream</title>
+  <style>
+    :root{
+      --bg:#ffffff;
+      --text:#0b0f17;
+      --muted:#667085;
+      --border:#e5e7eb;
+      --panel:#ffffff;
+      --soft:#f8fafc;
+      --brand:#4f93ad;
+      --radius:10px;
+      --shadow: 0 10px 28px rgba(16,24,40,.08);
+      --mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+      --sans: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial;
+    }
+    *{box-sizing:border-box}
+    body{
+      margin:0;
+      font-family:var(--sans);
+      color:var(--text);
+      background:var(--bg);
+    }
+    a{ color:inherit; text-decoration:none; }
+    .wrap{ max-width: 1120px; margin: 0 auto; padding: 18px 18px 54px; }
+
+    .topbar{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:16px;
+      padding: 14px 0;
+    }
+    .brand{
+      display:flex;
+      align-items:center;
+      gap:12px;
+      min-width: 0;
+    }
+    .mark{
+      width:38px;height:38px;
+      border:1px solid var(--border);
+      border-radius: 10px;
+      background: var(--soft);
+      box-shadow: var(--shadow);
+      display:grid;
+      place-items:center;
+      flex:0 0 auto;
+    }
+    .nameBlock{ display:flex; flex-direction:column; gap:4px; min-width:0; }
+    .name{
+      font-size:22px;
+      font-weight:900;
+      letter-spacing:-.2px;
+      line-height:1.05;
+      white-space:nowrap;
+      overflow:hidden;
+      text-overflow:ellipsis;
+    }
+    .tagline{ margin:0; color:var(--muted); font-size:12px; font-family:var(--mono); }
+
+    .nav{
+      display:flex;
+      align-items:center;
+      gap:10px;
+      flex-wrap:wrap;
+      justify-content:flex-end;
+    }
+    .navLink{
+      display:inline-flex;
+      align-items:center;
+      padding: 8px 12px;
+      border-radius: 999px;
+      border:1px solid var(--border);
+      background:#fff;
+      color: var(--muted);
+      font-weight:900;
+    }
+    .navLink:hover{ background: var(--soft); border-color:#d0d5dd; color: var(--text); }
+    .navLink.primary{
+      background: rgba(79,147,173,.10);
+      border-color: rgba(79,147,173,.35);
+      color: var(--brand);
+    }
+
+    .hero{
+      padding: 26px 0 0;
+      max-width: 920px;
+    }
+    h1{
+      margin:0;
+      font-size: 40px;
+      font-weight: 950;
+      letter-spacing: -1.0px;
+      line-height: 1.05;
+    }
+    .sub{
+      margin: 12px 0 0 0;
+      color: var(--muted);
+      font-size: 16px;
+      line-height: 1.5;
+    }
+
+    .grid{
+      margin-top: 20px;
+      display:grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      align-items:stretch;
+    }
+    .card{
+      border:1px solid var(--border);
+      border-radius: var(--radius);
+      background: var(--panel);
+      box-shadow: var(--shadow);
+      overflow:hidden;
+    }
+    .card .hd{
+      padding: 12px 14px;
+      border-bottom:1px solid var(--border);
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:10px;
+      background:#fff;
+    }
+    .card .hd .t{
+      font-size:12px;
+      font-weight:950;
+      letter-spacing:.08em;
+      text-transform:uppercase;
+      color: var(--muted);
+    }
+    .card .bd{ padding: 14px; }
+    .row{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:10px;
+      padding: 10px 12px;
+      border:1px solid var(--border);
+      border-radius: 10px;
+      background: var(--soft);
+      margin-top: 10px;
+    }
+    .row:first-child{ margin-top: 0; }
+    .row .l{ min-width:0; }
+    .row .k{ font-weight:950; }
+    .row .m{ color: var(--muted); font-size: 12px; font-family: var(--mono); margin-top: 4px; }
+    .btn{
+      appearance:none;
+      border:1px solid var(--border);
+      background:#fff;
+      border-radius: 10px;
+      padding: 10px 12px;
+      font-weight:950;
+      cursor:pointer;
+      white-space:nowrap;
+    }
+    .btn:hover{ background: #fff; border-color:#d0d5dd; filter: brightness(.99); }
+    .btn.brand{
+      border-color: rgba(79,147,173,.35);
+      background: rgba(79,147,173,.10);
+      color: var(--brand);
+    }
+
+    @media (max-width: 860px){
+      .grid{ grid-template-columns: 1fr; }
+      h1{ font-size: 34px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="topbar">
+      <div class="brand">
+        <div class="mark" aria-hidden="true" title="platypus">
+          <svg width="26" height="26" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+            <path d="M18 30c0-8 7-14 16-14s16 6 16 14-7 16-16 16-16-8-16-16Z" fill="rgba(16,24,40,.08)" stroke="rgba(16,24,40,.22)" stroke-width="2"/>
+            <path d="M10 36c2-6 10-10 18-10h8c8 0 16 4 18 10-3 5-10 8-18 8h-8c-8 0-15-3-18-8Z" fill="rgba(79,147,173,.18)" stroke="rgba(79,147,173,.70)" stroke-width="2" stroke-linejoin="round"/>
+            <circle cx="26" cy="28" r="2.2" fill="rgba(16,24,40,.55)"/>
+            <circle cx="38" cy="28" r="2.2" fill="rgba(16,24,40,.55)"/>
+          </svg>
+        </div>
+        <div class="nameBlock">
+          <div class="name">Monotream</div>
+          <p class="tagline">Admin</p>
+        </div>
+      </div>
+
+      <div class="nav" role="navigation" aria-label="Admin navigation">
+        <a class="navLink" href="/">Home</a>
+        <a class="navLink" href="/dashboard">Dashboard</a>
+        <button class="navLink primary" id="logoutBtn" type="button">Logout</button>
+      </div>
+    </div>
+
+    <div class="hero">
+      <h1>Admin</h1>
+      <p class="sub">Quick links and basic controls for demos. (Auth is cookie-based; logging out clears the session.)</p>
+
+      <div class="grid">
+        <div class="card">
+          <div class="hd">
+            <div class="t">System</div>
+            <span style="color:var(--muted);font-family:var(--mono);font-size:12px">local</span>
+          </div>
+          <div class="bd">
+            <div class="row">
+              <div class="l">
+                <div class="k">Health</div>
+                <div class="m">GET /health</div>
+              </div>
+              <a class="btn" href="/health" target="_blank" rel="noreferrer">Open</a>
+            </div>
+            <div class="row">
+              <div class="l">
+                <div class="k">API Docs</div>
+                <div class="m">GET /docs</div>
+              </div>
+              <a class="btn brand" href="/docs" target="_blank" rel="noreferrer">Open</a>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="hd">
+            <div class="t">Data</div>
+            <span style="color:var(--muted);font-family:var(--mono);font-size:12px">read-only</span>
+          </div>
+          <div class="bd">
+            <div class="row">
+              <div class="l">
+                <div class="k">Heat index</div>
+                <div class="m">GET /heat_index?t=..&rh=..</div>
+              </div>
+              <a class="btn" href="/heat_index?t=90&rh=60" target="_blank" rel="noreferrer">Try</a>
+            </div>
+            <div class="row">
+              <div class="l">
+                <div class="k">Lux data</div>
+                <div class="m">GET /get_lux?kerberos=..&time_minutes=..</div>
+              </div>
+              <a class="btn" href="/get_lux?kerberos=test&time_minutes=60" target="_blank" rel="noreferrer">Try</a>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const logoutBtn = document.getElementById("logoutBtn");
+    logoutBtn.addEventListener("click", async () => {
+      try{
+        await fetch("/admin/logout", { method: "POST" });
+      } finally {
+        window.location.href = "/";
+      }
+    });
+  </script>
+</body>
+</html>
+
