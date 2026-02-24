@@ -4,6 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Campus Temperature Dashboard</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="" />
   <style>
     :root{
       --bg:#ffffff;
@@ -336,101 +337,37 @@
     }
 
     .map{
-      position:relative;
       height: 640px;
       background: #fff;
     }
 
-    /* minimal “campus map” look: light grid + a few block outlines */
-    .map::before{
-      content:"";
-      position:absolute; inset:0;
-      background-image:
-        linear-gradient(to right, rgba(16,24,40,.06) 1px, transparent 1px),
-        linear-gradient(to bottom, rgba(16,24,40,.06) 1px, transparent 1px);
-      background-size: 56px 56px;
-      opacity:.35;
-      pointer-events:none;
-    }
-    .outline{
-      position:absolute;
-      border:1px solid rgba(16,24,40,.18);
-      border-radius: 4px;
-      background: rgba(16,24,40,.02);
-    }
+    .leaflet-container{ font-family: var(--sans); }
 
-    .zone{
-      position:absolute;
-      border-radius: 6px;
-      border: 2px solid rgba(16,24,40,.12);
-      overflow:hidden;
-    }
-    .zone.hot{ background: rgba(217,45,32,.12); border-color: rgba(217,45,32,.28); }
-    .zone.cool{ background: rgba(18,183,106,.12); border-color: rgba(18,183,106,.28); }
-    .zone.neutral{ background: rgba(152,162,179,.10); border-color: rgba(152,162,179,.22); }
-
-    .zoneLabel{
-      position:absolute;
-      left:10px; top:10px;
-      font-size:13px;
-      font-weight:900;
-    }
-    .zoneMeta{
-      position:absolute;
-      left:10px; bottom:10px;
-      display:flex; gap:8px; flex-wrap:wrap;
+    /* Small helper text */
+    .hint{
+      margin-top: 10px;
+      color: var(--muted);
+      font-size: 12px;
       font-family: var(--mono);
-      font-size:12px;
-      color: rgba(16,24,40,.72);
+      line-height: 1.35;
     }
-    .chip{
-      padding: 6px 8px;
-      border-radius: 999px;
-      border:1px solid rgba(16,24,40,.12);
+
+    /* Chart area */
+    .chartWrap{
+      padding: 10px 12px;
+      border:1px solid var(--border);
+      border-radius: 6px;
       background: #fff;
     }
-
-    /* Routes overlay */
-    .routes{ position:absolute; inset:0; pointer-events:none; display:none; }
-    .routes.on{ display:block; }
-    .route{
-      position:absolute;
-      height:4px;
-      border-radius: 2px;
-      background: rgba(163,31,52,.55); /* MIT red route */
+    .chartBox{
+      position:relative;
+      height: 220px;
     }
-    .route.faint{ background: rgba(16,24,40,.22); }
-
-    .note{
-      position:absolute;
-      right:14px; bottom:14px;
-      width: 360px;
-      border:1px solid var(--border);
-      border-left: 4px solid var(--accent);
-      border-radius: 6px;
-      padding: 12px 12px 12px 12px;
-      background:#fff;
-      box-shadow: var(--shadow);
-    }
-    .note .nt{
-      font-size:12px;
-      font-weight:900;
-      letter-spacing:.08em;
-      text-transform:uppercase;
-      color: var(--muted);
-      margin-bottom:6px;
-    }
-    .note .nb{
-      font-size:13px;
-      color: var(--muted);
-      line-height:1.35;
-    }
-    .note b{ color: var(--text); }
 
     @media (max-width: 980px){
       .grid{ grid-template-columns: 1fr; }
       .map{ height: 520px; }
-      .note{ width: calc(100% - 28px); left:14px; right:14px; }
+      .chartBox{ height: 200px; }
     }
   </style>
 </head>
@@ -456,14 +393,18 @@
       <div class="card">
         <div class="hd">
           <h2>Overview</h2>
-          <button class="btn accent" id="toggleBtn">Toggle Routes</button>
+          <button class="btn accent" id="refreshBtn">Refresh</button>
         </div>
         <div class="bd">
           <div class="kpiRow">
             <div class="kpiMain">
-              <div class="bigTemp" id="tempValue">42°F</div>
-              <div class="delta" id="deltaValue">+6°F above average</div>
-              <div class="smallMeta">baseline: 36°F • mode: anomaly</div>
+              <div class="bigTemp" id="tempValue">--°F</div>
+              <div class="delta" id="hiValue">Hottest: —</div>
+              <div class="smallMeta" id="metaValue">Window: — • Readings: —</div>
+            </div>
+            <div style="text-align:right">
+              <div class="smallMeta" id="coolestValue">Coolest: —</div>
+              <div class="smallMeta" id="countValue">Areas: —</div>
             </div>
           </div>
 
@@ -472,19 +413,19 @@
               <div class="legLeft">
                 <div class="swatch" style="background:var(--hot)"></div>
                 <div class="legText">
-                  <div class="legName">Hotter than normal</div>
-                  <div class="legHint">Δ +4°F and up</div>
+                  <div class="legName">Hot</div>
+                  <div class="legHint">≥ 85°F</div>
                 </div>
               </div>
-              <span class="tag avoid">avoid</span>
+              <span class="tag avoid">hot</span>
             </div>
 
             <div class="legItem">
               <div class="legLeft">
                 <div class="swatch" style="background:var(--neutral)"></div>
                 <div class="legText">
-                  <div class="legName">Normal</div>
-                  <div class="legHint">Δ within ±3°F</div>
+                  <div class="legName">Neutral</div>
+                  <div class="legHint">76–84°F</div>
                 </div>
               </div>
               <span class="tag">ok</span>
@@ -494,28 +435,34 @@
               <div class="legLeft">
                 <div class="swatch" style="background:var(--cool)"></div>
                 <div class="legText">
-                  <div class="legName">Cooler than normal</div>
-                  <div class="legHint">Δ -4°F and down</div>
+                  <div class="legName">Cool</div>
+                  <div class="legHint">≤ 75°F</div>
                 </div>
               </div>
-              <span class="tag go">go</span>
+              <span class="tag go">cool</span>
             </div>
           </div>
 
           <div class="list">
             <div class="lh">
-              <div class="name">Top Hot Spots</div>
-              <span class="tag avoid">avoid</span>
+              <div class="name">Areas</div>
+              <span class="tag">click area</span>
             </div>
-            <div class="rows" id="hotList"></div>
+            <div class="rows" id="areaList"></div>
           </div>
 
           <div class="list">
             <div class="lh">
-              <div class="name">Top Cool Spots</div>
-              <span class="tag go">go</span>
+              <div class="name">Area time series</div>
+              <span class="tag">avg temp + humidity</span>
             </div>
-            <div class="rows" id="coolList"></div>
+            <div class="rows">
+              <div class="chartWrap">
+                <div class="chartBox">
+                  <canvas id="seriesChart"></canvas>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -525,141 +472,289 @@
         <div class="mapTop">
           <div class="left">
             <div class="t">Campus Map</div>
-            <div class="s">Zones are labeled so this mockup works as a decision tool.</div>
+            <div class="s">Area averages from readings within each bounding box. Click an area for details.</div>
           </div>
-          <button class="btn" id="toggleBtn2">Toggle Routes</button>
+          <button class="btn" id="recenterBtn">Recenter</button>
         </div>
 
-        <div class="map" id="map">
-          <!-- simple “building outlines” -->
-          <div class="outline" style="left:6%; top:10%; width:22%; height:14%;"></div>
-          <div class="outline" style="left:31%; top:12%; width:18%; height:10%;"></div>
-          <div class="outline" style="left:54%; top:10%; width:16%; height:14%;"></div>
-          <div class="outline" style="left:73%; top:14%; width:18%; height:10%;"></div>
-
-          <div class="outline" style="left:10%; top:34%; width:26%; height:18%;"></div>
-          <div class="outline" style="left:42%; top:32%; width:18%; height:16%;"></div>
-          <div class="outline" style="left:66%; top:34%; width:24%; height:18%;"></div>
-
-          <div class="outline" style="left:8%; top:62%; width:18%; height:16%;"></div>
-          <div class="outline" style="left:30%; top:60%; width:22%; height:18%;"></div>
-          <div class="outline" style="left:56%; top:60%; width:36%; height:18%;"></div>
-
-          <!-- zones -->
-          <div class="zone hot" style="left:8%; top:22%; width:34%; height:20%;">
-            <div class="zoneLabel">Mass Ave Corridor</div>
-            <div class="zoneMeta">
-              <span class="chip">Δ +7°F</span>
-              <span class="chip">crowded</span>
-            </div>
-          </div>
-
-          <div class="zone hot" style="left:56%; top:22%; width:34%; height:18%;">
-            <div class="zoneLabel">Student Center Plaza</div>
-            <div class="zoneMeta">
-              <span class="chip">Δ +5°F</span>
-              <span class="chip">sun-exposed</span>
-            </div>
-          </div>
-
-          <div class="zone cool" style="left:14%; top:54%; width:30%; height:24%;">
-            <div class="zoneLabel">Shaded Courtyard</div>
-            <div class="zoneMeta">
-              <span class="chip">Δ -6°F</span>
-              <span class="chip">tree cover</span>
-            </div>
-          </div>
-
-          <div class="zone neutral" style="left:52%; top:52%; width:38%; height:26%;">
-            <div class="zoneLabel">Library Area</div>
-            <div class="zoneMeta">
-              <span class="chip">Δ -1°F</span>
-              <span class="chip">stable</span>
-            </div>
-          </div>
-
-          <!-- routes overlay -->
-          <div class="routes" id="routes">
-            <div class="route" style="left:6%; top:44%; width:88%; transform: rotate(-2deg);"></div>
-            <div class="route faint" style="left:20%; top:70%; width:64%; transform: rotate(6deg);"></div>
-            <div class="route faint" style="left:40%; top:28%; width:44%; transform: rotate(18deg);"></div>
-          </div>
-
-          <div class="note">
-            <div class="nt">Decision Summary</div>
-            <div class="nb">
-              <b>Avoid:</b> Mass Ave Corridor, Student Center Plaza (higher anomaly).<br/>
-              <b>Go:</b> Shaded Courtyard (lower anomaly). Toggle routes to plan a cooler path.
-            </div>
-          </div>
-        </div>
+        <div class="map" id="map"></div>
       </div>
 
     </div>
   </div>
 
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
   <script>
-    // No external deps. Safari-friendly.
-    const hotspots = [
-      { name: "Mass Ave Corridor", delta: +7, reason: "sun + foot traffic" },
-      { name: "Student Center Plaza", delta: +5, reason: "open concrete" },
-      { name: "Kresge Steps", delta: +4, reason: "wind shielded" }
-    ];
+    const MIT_CENTER = [42.3601, -71.0942];
+    const WINDOW_MINUTES = 30;
+    const SERIES_BUCKET_MINUTES = 10;
+    const SERIES_HOURS = 6;
 
-    const coolspots = [
-      { name: "Shaded Courtyard", delta: -6, reason: "tree cover" },
-      { name: "North Arcade", delta: -5, reason: "shade corridor" },
-      { name: "Basement Connector", delta: -4, reason: "indoor route" }
-    ];
+    const updatedText = document.getElementById("updatedText");
+    const tempValue = document.getElementById("tempValue");
+    const hiValue = document.getElementById("hiValue");
+    const metaValue = document.getElementById("metaValue");
+    const coolestValue = document.getElementById("coolestValue");
+    const countValue = document.getElementById("countValue");
 
-    function renderList(el, items, kind){
-      el.innerHTML = "";
-      items.forEach(x => {
+    const areaList = document.getElementById("areaList");
+
+    const refreshBtn = document.getElementById("refreshBtn");
+    const recenterBtn = document.getElementById("recenterBtn");
+
+    function fmtClockFromMs(ms){
+      if(ms == null) return "—";
+      return new Intl.DateTimeFormat(undefined, { hour: "numeric", minute: "2-digit" }).format(new Date(ms));
+    }
+
+    function tempKind(tempF){
+      if(tempF >= 85) return "hot";
+      if(tempF <= 75) return "cool";
+      return "neutral";
+    }
+
+    const COLORS = {
+      hot: "#d92d20",
+      cool: "#12b76a",
+      neutral: "#98a2b3",
+      accent: "#a31f34",
+      dark: "rgba(16,24,40,.72)"
+    };
+
+    const map = L.map("map", { zoomControl: true }).setView(MIT_CENTER, 16);
+    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+      maxZoom: 19,
+      attribution: "&copy; OpenStreetMap"
+    }).addTo(map);
+
+    let areaRects = new Map(); // area_id -> L.Rectangle
+    let selectedAreaId = null;
+    let lastAreas = [];
+
+    let chart = null;
+    const ctx = document.getElementById("seriesChart").getContext("2d");
+
+    function ensureChart(){
+      if(chart) return chart;
+      chart = new Chart(ctx, {
+        type: "line",
+        data: {
+          labels: [],
+          datasets: [
+            {
+              label: "Avg temp (°F)",
+              data: [],
+              borderColor: "rgba(163,31,52,.85)",
+              backgroundColor: "rgba(163,31,52,.10)",
+              tension: 0.25,
+              pointRadius: 0,
+              yAxisID: "yTemp"
+            },
+            {
+              label: "Avg humidity (%RH)",
+              data: [],
+              borderColor: "rgba(79,147,173,.95)",
+              backgroundColor: "rgba(79,147,173,.10)",
+              tension: 0.25,
+              pointRadius: 0,
+              yAxisID: "yRh"
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          interaction: { mode: "index", intersect: false },
+          plugins: {
+            legend: { display: true, labels: { boxWidth: 12 } },
+            tooltip: { enabled: true }
+          },
+          scales: {
+            x: { ticks: { maxRotation: 0, autoSkip: true, maxTicksLimit: 8 } },
+            yTemp: { position: "left", title: { display: true, text: "°F" } },
+            yRh: { position: "right", grid: { drawOnChartArea: false }, min: 0, max: 100, title: { display: true, text: "%RH" } }
+          }
+        }
+      });
+      return chart;
+    }
+
+    function setCampusSummary(summary){
+      if(summary.avg_temp_f != null){
+        tempValue.textContent = `${Math.round(summary.avg_temp_f)}°F`;
+      } else {
+        tempValue.textContent = `--°F`;
+      }
+
+      if(summary.hottest_area){
+        hiValue.textContent = `Hottest: ${summary.hottest_area.name} (${Math.round(summary.hottest_area.avg_temp_f)}°F)`;
+      } else {
+        hiValue.textContent = "Hottest: —";
+      }
+
+      if(summary.coolest_area){
+        coolestValue.textContent = `Coolest: ${summary.coolest_area.name} (${Math.round(summary.coolest_area.avg_temp_f)}°F)`;
+      } else {
+        coolestValue.textContent = "Coolest: —";
+      }
+
+      metaValue.textContent = `Window: ${summary.window_minutes} min • Readings: ${summary.n_readings_total}`;
+      countValue.textContent = `Areas: ${lastAreas.length || "—"}`;
+      updatedText.textContent = `Updated ${fmtClockFromMs(summary.timestamp_ms)} • Local`;
+    }
+
+    async function fetchJson(url){
+      const res = await fetch(url, { headers: { "Accept": "application/json" } });
+      if(!res.ok){
+        throw new Error(`${res.status} ${res.statusText}`);
+      }
+      return await res.json();
+    }
+
+    function renderAreaList(areas){
+      areaList.innerHTML = "";
+      areas.forEach(a => {
         const row = document.createElement("div");
         row.className = "row";
+        row.style.cursor = "pointer";
 
         const left = document.createElement("div");
         left.className = "left";
         left.innerHTML = `
-          <div class="title">${x.name}</div>
-          <div class="meta">${x.reason}</div>
+          <div class="title">${a.name}</div>
+          <div class="meta">${a.n_readings} readings • ${fmtClockFromMs(a.timestamp_ms)}</div>
         `;
 
         const badge = document.createElement("div");
-        const sign = x.delta > 0 ? "+" : "";
-        badge.className = "badge " + (kind === "hot" ? "hot" : "cool");
-        badge.textContent = `Δ ${sign}${x.delta}°F`;
+        const kind = a.avg_temp_f == null ? "neutral" : tempKind(a.avg_temp_f);
+        badge.className = "badge " + (kind === "hot" ? "hot" : (kind === "cool" ? "cool" : ""));
+        badge.textContent = a.avg_temp_f == null ? "—" : `${Math.round(a.avg_temp_f)}°F`;
 
+        row.addEventListener("click", () => selectArea(a));
         row.appendChild(left);
         row.appendChild(badge);
-        el.appendChild(row);
+        areaList.appendChild(row);
       });
     }
 
-    renderList(document.getElementById("hotList"), hotspots, "hot");
-    renderList(document.getElementById("coolList"), coolspots, "cool");
-
-    // routes toggle
-    const routes = document.getElementById("routes");
-    const btn1 = document.getElementById("toggleBtn");
-    const btn2 = document.getElementById("toggleBtn2");
-    let on = false;
-    function toggleRoutes(){
-      on = !on;
-      routes.classList.toggle("on", on);
+    function rectStyleForArea(a, selected){
+      const kind = a.avg_temp_f == null ? "neutral" : tempKind(a.avg_temp_f);
+      const stroke = kind === "hot" ? COLORS.hot : (kind === "cool" ? COLORS.cool : COLORS.neutral);
+      return {
+        color: selected ? COLORS.accent : stroke,
+        weight: selected ? 3 : 2,
+        opacity: 0.85,
+        fillColor: stroke,
+        fillOpacity: selected ? 0.22 : 0.14
+      };
     }
-    btn1.addEventListener("click", toggleRoutes);
-    btn2.addEventListener("click", toggleRoutes);
 
-    // Update label at open (no API)
-    (function(){
-      const d = new Date();
-      const hrs = d.getHours();
-      const mins = String(d.getMinutes()).padStart(2,"0");
-      const ampm = hrs >= 12 ? "PM" : "AM";
-      const hr12 = ((hrs + 11) % 12 + 1);
-      document.getElementById("updatedText").textContent = `Updated ${hr12}:${mins} ${ampm} • Live`;
-    })();
+    async function selectArea(area){
+      selectedAreaId = area.area_id;
+
+      for(const a of lastAreas){
+        const rect = areaRects.get(a.area_id);
+        if(rect) rect.setStyle(rectStyleForArea(a, a.area_id === selectedAreaId));
+      }
+
+      const popupHtml = `
+        <div style="min-width:220px">
+          <div style="font-weight:950; margin-bottom:6px">${area.name}</div>
+          <div style="font-family: var(--mono); font-size:12px; color:${COLORS.dark}; line-height:1.35">
+            Avg temp: <b>${area.avg_temp_f == null ? "—" : Math.round(area.avg_temp_f) + "°F"}</b><br/>
+            Avg RH: <b>${area.avg_humidity_rh == null ? "—" : Math.round(area.avg_humidity_rh) + "%"}</b><br/>
+            Heat index: <b>${area.avg_heat_index_f == null ? "—" : Math.round(area.avg_heat_index_f) + "°F"}</b><br/>
+            Readings: <b>${area.n_readings}</b><br/>
+            Updated: <b>${fmtClockFromMs(area.timestamp_ms)}</b>
+          </div>
+        </div>
+      `;
+
+      const rect = areaRects.get(area.area_id);
+      if(rect){
+        rect.bindPopup(popupHtml).openPopup();
+      }
+
+      const seriesResp = await fetchJson(`/api/dr1/areas/${encodeURIComponent(area.area_id)}/series?bucket_minutes=${SERIES_BUCKET_MINUTES}&hours=${SERIES_HOURS}`);
+      const series = seriesResp.series || [];
+      const labels = series.map(p => fmtClockFromMs(p.timestamp_ms));
+      const temps = series.map(p => p.avg_temp_f);
+      const rhs = series.map(p => p.avg_humidity_rh);
+
+      const ch = ensureChart();
+      ch.data.labels = labels;
+      ch.data.datasets[0].data = temps;
+      ch.data.datasets[1].data = rhs;
+      ch.update();
+    }
+
+    async function loadAreasAndSummary(){
+      const [areas, summary] = await Promise.all([
+        fetchJson(`/api/dr1/areas?window_minutes=${WINDOW_MINUTES}`),
+        fetchJson(`/api/dr1/campus/summary?window_minutes=${WINDOW_MINUTES}`)
+      ]);
+
+      lastAreas = areas;
+      renderAreaList(areas);
+      setCampusSummary(summary);
+
+      for(const a of areas){
+        const bounds = [
+          [a.bounds.min_lat, a.bounds.min_lon],
+          [a.bounds.max_lat, a.bounds.max_lon]
+        ];
+
+        if(!areaRects.has(a.area_id)){
+          const rect = L.rectangle(bounds, rectStyleForArea(a, false)).addTo(map);
+          rect.on("click", () => selectArea(a));
+          rect.bindTooltip(`${a.name}`, { sticky: true });
+          areaRects.set(a.area_id, rect);
+        } else {
+          const rect = areaRects.get(a.area_id);
+          rect.setBounds(bounds);
+          rect.setStyle(rectStyleForArea(a, a.area_id === selectedAreaId));
+        }
+      }
+
+      for(const [areaId, rect] of areaRects.entries()){
+        if(!areas.find(x => x.area_id === areaId)){
+          rect.remove();
+          areaRects.delete(areaId);
+        }
+      }
+
+      if(!selectedAreaId && areas.length > 0){
+        await selectArea(areas[0]);
+      } else if(selectedAreaId){
+        const current = areas.find(x => x.area_id === selectedAreaId);
+        if(current) await selectArea(current);
+      }
+    }
+
+    refreshBtn.addEventListener("click", () => {
+      loadAreasAndSummary().catch(err => {
+        updatedText.textContent = `Error loading data: ${String(err)}`;
+      });
+    });
+
+    recenterBtn.addEventListener("click", () => {
+      if(lastAreas.length === 0){
+        map.setView(MIT_CENTER, 16);
+        return;
+      }
+      const all = [];
+      for(const a of lastAreas){
+        all.push([a.bounds.min_lat, a.bounds.min_lon]);
+        all.push([a.bounds.max_lat, a.bounds.max_lon]);
+      }
+      const b = L.latLngBounds(all);
+      map.fitBounds(b.pad(0.10));
+    });
+
+    loadAreasAndSummary().catch(err => {
+      updatedText.textContent = `Error loading data: ${String(err)}`;
+    });
   </script>
 </body>
 </html>
